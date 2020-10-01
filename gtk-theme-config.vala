@@ -31,6 +31,9 @@ class ThemeConfigWindow : ApplicationWindow {
     File gtk3_config_file;
     File gtk2_config_file;
 
+    File gtk2_backup_config_file;
+    File gtk3_backup_config_file;
+
     File theme_path;
 
     string color_hex;
@@ -437,21 +440,46 @@ class ThemeConfigWindow : ApplicationWindow {
         }
     }
 
+    // Backup config
+    void backup_config() {
+        gtk3_backup_config_file = File.new_for_path( gtk3_config_file.get_path() + ".gtc-bak" );
+        gtk2_backup_config_file = File.new_for_path( gtk2_config_file.get_path() + ".gtc-bak" );
+
+        if ( gtk3_backup_config_file.query_exists() == false )
+            try {
+                gtk3_config_file.copy( gtk3_backup_config_file, 0 );
+            } catch (Error e) {
+                stderr.printf("Could not make a backup of GTK3 config: %s\n", e.message);
+            }
+    
+    
+        if ( gtk2_backup_config_file.query_exists() == false )
+            try {
+                gtk2_config_file.copy( gtk2_backup_config_file, 0 );
+            } catch (Error e) {
+                stderr.printf("Could not make a backup of GTK2 config: %s\n", e.message);
+            }
+    }
+
+    // Restore/Reset from backup
     void reset_config () {
-        try {
-            if (gtk3_config_file.query_exists ()) {
-                gtk3_config_file.delete ();
+        if ( gtk3_backup_config_file != null && gtk3_backup_config_file.query_exists() )
+            try {
+                gtk3_backup_config_file.copy( gtk3_config_file, FileCopyFlags.OVERWRITE );
+            } catch (Error e) {
+                stderr.printf("Could not restore a backup of GTK3 config: %s\n", e.message);
             }
-        } catch (Error e) {
-            stderr.printf ("Could not delete previous gtk3 configuration: %s\n", e.message);
-        }
-        try {
-            if (gtk2_config_file.query_exists ()) {
-                gtk2_config_file.delete ();
+        else
+            stdout.printf("Backup of GTK3 config does not exists.");
+
+        if ( gtk2_backup_config_file != null && gtk2_backup_config_file.query_exists() )
+            try {
+                gtk2_backup_config_file.copy( gtk2_config_file, FileCopyFlags.OVERWRITE );
+            } catch (Error e) {
+                stderr.printf("Could not restore a backup of GTK2 config: %s\n", e.message);
             }
-        } catch (Error e) {
-            stderr.printf ("Could not delete previous gtk2 configuration: %s\n", e.message);
-        }
+        else
+            stdout.printf("Backup of GTK2 config does not exists.");
     }
 
     void write_config () {
@@ -527,6 +555,9 @@ class ThemeConfigWindow : ApplicationWindow {
             menu_state2 = "menu-off */";;
             menu_gtk2 = "";
         }
+
+        // End this function if a backup was not successful.
+        backup_config();
 
         // Write config
         try {
